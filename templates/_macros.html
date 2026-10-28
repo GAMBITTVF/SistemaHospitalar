@@ -1,0 +1,42 @@
+{% macro risco(valor) -%}
+  {%- if valor -%}
+    <span class="risco risco-{{ valor }}">{{ RISCOS[valor].nome }}</span>
+  {%- else -%}
+    <span class="risco risco-nenhum">Aguardando classificação</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro status_atendimento(valor) -%}
+  {%- set classe = {'aberto': 'ok', 'internado': 'alerta', 'aguardando_transferencia': 'critico', 'finalizado': ''}[valor] -%}
+  <span class="etiqueta {{ classe }}">{{ STATUS_ATENDIMENTO[valor] }}</span>
+{%- endmacro %}
+
+{% macro campo(nome, rotulo, dados, erros, tipo='text', obrig=true, classe='c6', mascara=none, extra='') -%}
+  <div class="{{ classe }} {{ 'campo-erro' if erros.get(nome) }}">
+    <label for="{{ nome }}">{{ rotulo }}{% if obrig %} <span class="obrig">*</span>{% endif %}</label>
+    <input type="{{ tipo }}" id="{{ nome }}" name="{{ nome }}" value="{{ dados.get(nome) or '' }}"
+           {% if mascara %}data-mascara="{{ mascara }}" inputmode="numeric"{% endif %} {% if obrig %}required{% endif %} {{ extra|safe }}>
+    {% if erros.get(nome) %}<div class="msg-erro">{{ erros[nome] }}</div>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro sinais_vitais() -%}
+  <div class="vitais">
+    <div><label>PA (mmHg)</label><input name="pa" placeholder="120/80" maxlength="9"></div>
+    <div><label>FC (bpm)</label><input name="fc" type="number" min="20" max="250"></div>
+    <div><label>FR (irpm)</label><input name="fr" type="number" min="4" max="80"></div>
+    <div><label>Temp (°C)</label><input name="temperatura" type="number" step="0.1" min="30" max="45"></div>
+    <div><label>SpO2 (%)</label><input name="spo2" type="number" min="40" max="100"></div>
+    <div><label>Glicemia</label><input name="glicemia" type="number" min="10" max="1500"></div>
+  </div>
+{%- endmacro %}
+
+{% macro mostrar_vitais(e) -%}
+  {%- if e.pa or e.fc or e.fr or e.temperatura or e.spo2 or e.glicemia -%}
+  <div class="sv">
+    {% if e.pa %}PA {{ e.pa }} · {% endif %}{% if e.fc %}FC {{ e.fc }} · {% endif %}{% if e.fr %}FR {{ e.fr }} · {% endif %}
+    {% if e.temperatura %}T {{ e.temperatura }}°C · {% endif %}{% if e.spo2 %}SpO2 {{ e.spo2 }}% · {% endif %}
+    {% if e.glicemia %}HGT {{ e.glicemia }}{% endif %}
+  </div>
+  {%- endif -%}
+{%- endmacro %}

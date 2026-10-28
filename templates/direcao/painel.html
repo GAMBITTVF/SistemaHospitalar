@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco, status_atendimento with context %}
+{% block titulo %}Direção{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Visão geral do hospital</h1><small>Acompanhamento de todos os setores — acesso somente leitura.</small></div>
+  <div class="acoes">
+    <span class="somente-leitura" style="margin:0">🔒 Direção: visualização sem edição</span>
+    <a class="botao secundario" href="{{ url_for('direcao.painel') }}">Atualizar</a>
+  </div>
+</div>
+
+<div class="indicadores">
+  <div class="indicador"><div class="valor">{{ ind.em_atendimento }}</div><div class="rotulo">Em atendimento</div></div>
+  <div class="indicador"><div class="valor">{{ ind.internados }}</div><div class="rotulo">Internados</div></div>
+  <div class="indicador {{ 'alerta' if ind.aguardando_transferencia }}"><div class="valor">{{ ind.aguardando_transferencia }}</div><div class="rotulo">Aguardando transferência</div></div>
+  <div class="indicador {{ 'alerta' if ind.sem_triagem }}"><div class="valor">{{ ind.sem_triagem }}</div><div class="rotulo">Sem classificação de risco</div></div>
+  <div class="indicador"><div class="valor">{{ ind.entradas_hoje }}</div><div class="rotulo">Entradas hoje</div></div>
+  <div class="indicador"><div class="valor">{{ ind.altas_hoje }}</div><div class="rotulo">Saídas hoje</div></div>
+  <div class="indicador {{ 'alerta' if ind.capas_pendentes }}"><div class="valor">{{ ind.capas_pendentes }}</div><div class="rotulo">Capas sem assinatura</div></div>
+  <div class="indicador"><div class="valor">{{ ind.aih_pendentes }}</div><div class="rotulo">AIH a analisar</div></div>
+  <div class="indicador"><div class="valor">{{ ind.doses_hoje }}</div><div class="rotulo">Doses de medicação hoje</div></div>
+  <div class="indicador"><div class="valor">{{ ind.pacientes }}</div><div class="rotulo">Pacientes cadastrados</div></div>
+</div>
+
+<div class="grade grade-2">
+  <div class="cartao">
+    <h2>Pacientes por classificação de risco</h2>
+    <table>
+      {% for k, r in RISCOS.items() %}<tr><td>{{ risco(k) }}</td><td><b>{{ por_risco.get(k, 0) }}</b></td></tr>{% endfor %}
+      <tr><td>{{ risco(none) }}</td><td><b>{{ por_risco.get(none, 0) }}</b></td></tr>
+    </table>
+  </div>
+  <div class="cartao">
+    <h2>Setores</h2>
+    <table>
+      <tr><td>Faturamento AIH</td><td>{% for s, n in STATUS_AIH.items() %}<span class="etiqueta">{{ n }}: {{ aih.get(s, 0) }}</span> {% endfor %}</td></tr>
+      <tr><td>Equipe ativa</td><td>{% for e in equipe %}<span class="etiqueta ok">{{ PAPEIS[e.papel] }}: {{ e.n }}</span> {% endfor %}</td></tr>
+    </table>
+    <div class="acoes" style="margin-top:12px">
+      <a class="botao secundario pequeno" href="{{ url_for('clinico.painel') }}">Painel assistencial</a>
+      <a class="botao secundario pequeno" href="{{ url_for('recepcao.busca') }}">Recepção</a>
+      <a class="botao secundario pequeno" href="{{ url_for('transferencia.lista') }}">Transferências</a>
+      <a class="botao secundario pequeno" href="{{ url_for('aih.lista', status='todas') }}">AIH</a>
+      <a class="botao secundario pequeno" href="{{ url_for('clinico.relatorio_medicacoes') }}">Medicações</a>
+      <a class="botao secundario pequeno" href="{{ url_for('admin.usuarios') }}">Usuários</a>
+      <a class="botao secundario pequeno" href="{{ url_for('direcao.auditoria') }}">Auditoria</a>
+    </div>
+  </div>
+</div>
+
+<div class="cartao">
+  <h2>Pacientes no hospital agora ({{ ativos|length }})</h2>
+  {% if ativos %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Nº</th><th>Paciente</th><th>Entrada</th><th>Tempo</th><th>Risco</th><th>Situação</th><th></th></tr>
+    {% for a in ativos %}
+    <tr><td>{{ a.id }}</td><td>{{ a.nome }}</td><td>{{ a.entrada|data }}</td><td>{{ horas_desde(a.entrada) }}h</td>
+      <td>{{ risco(a.risco) }}</td>
+      <td>{{ status_atendimento(a.status) }}{% if a.internacao_status == 'pendente_assinatura' %} <span class="etiqueta critico">capa pendente</span>{% endif %}</td>
+      <td><a class="botao pequeno secundario" href="{{ url_for('clinico.atendimento', atendimento_id=a.id) }}">Ver</a></td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhum paciente em atendimento.</p>{% endif %}
+</div>
+
+<div class="grade grade-2">
+  <div class="cartao">
+    <h2>Últimas saídas</h2>
+    {% if finalizados %}
+    <table>
+      <tr><th>Paciente</th><th>Saída</th><th>Tipo</th><th></th></tr>
+      {% for a in finalizados %}<tr><td>{{ a.nome }}</td><td>{{ a.saida|data }}</td><td>{{ TIPOS_SAIDA[a.tipo_saida] }}</td>
+        <td><a href="{{ url_for('clinico.atendimento', atendimento_id=a.id) }}">ver</a></td></tr>{% endfor %}
+    </table>
+    {% else %}<p class="vazio">Sem saídas registradas.</p>{% endif %}
+  </div>
+  <div class="cartao">
+    <h2>Transferências recentes</h2>
+    {% if transferencias %}
+    <table>
+      <tr><th>Paciente</th><th>Motivo</th><th>Situação</th></tr>
+      {% for t in transferencias %}<tr><td><a href="{{ url_for('transferencia.detalhe', transferencia_id=t.id) }}">{{ t.nome }}</a></td>
+        <td>{{ MOTIVOS_TRANSFERENCIA[t.motivo] }}</td><td>{{ STATUS_TRANSFERENCIA[t.status] }}</td></tr>{% endfor %}
+    </table>
+    {% else %}<p class="vazio">Nenhuma transferência.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

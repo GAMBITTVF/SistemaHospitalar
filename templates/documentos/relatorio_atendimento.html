@@ -1,0 +1,61 @@
+{% extends 'documentos/_base_documento.html' %}
+{% from '_macros.html' import mostrar_vitais with context %}
+{% block titulo %}Relatório de atendimento {{ at.id }}{% endblock %}
+{% block cabecalho %}Relatório de Atendimento{% endblock %}
+{% block corpo %}
+<div class="bloco">
+  <h3>Atendimento</h3>
+  <div class="linha">
+    <div><b>Entrada:</b> {{ at.entrada|data }}</div>
+    <div><b>Saída:</b> {{ at.saida|data }}</div>
+    <div><b>Permanência:</b> {{ horas_desde(at.entrada, at.saida) }}h</div>
+    <div><b>Situação:</b> {{ STATUS_ATENDIMENTO[at.status] }}{% if at.tipo_saida %} ({{ TIPOS_SAIDA[at.tipo_saida] }}){% endif %}</div>
+    <div class="largo"><b>Classificação de risco:</b> {{ RISCOS[at.risco].nome if at.risco else 'Não classificado' }}</div>
+    <div class="largo"><b>Internação:</b> {{ 'Sim' if internacao else 'Não' }}</div>
+    <div class="total"><b>Motivo da procura:</b> {{ at.motivo_procura }}</div>
+    <div class="total"><b>Diagnóstico:</b> {{ at.hipotese_diagnostica or '—' }}{% if at.cid_principal %} — CID {{ at.cid_principal }}{% endif %}</div>
+  </div>
+</div>
+
+<div class="bloco">
+  <h3>Medicações recebidas</h3>
+  {% if prescricoes %}
+  <table>
+    <tr><th>Medicamento</th><th>Dose / via</th><th>Prescrito por</th><th>Qtd. administrada</th></tr>
+    {% for p in prescricoes %}
+    <tr><td>{{ p.medicamento }}</td><td>{{ p.dose }} · {{ p.via }} · {{ p.frequencia }}</td>
+      <td>{{ p.medico_nome }}{% if p.medico_registro %} ({{ p.medico_registro }}){% endif %}</td><td><b>{{ p.total_administrado }}</b></td></tr>
+    {% endfor %}
+  </table>
+  <p style="margin:8px 0 0"><b>Total de doses administradas:</b> {{ administracoes|length }}</p>
+  {% if administracoes %}
+  <table style="margin-top:8px">
+    <tr><th>Data/hora</th><th>Medicamento</th><th>Administrado por</th></tr>
+    {% for ad in administracoes|reverse %}
+    <tr><td>{{ ad.administrado_em|data }}</td><td>{{ ad.medicamento }} {{ ad.dose }}</td><td>{{ ad.profissional }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% else %}<p class="vazio">Nenhuma medicação.</p>{% endif %}
+</div>
+
+{% for tipo, titulo in [('tecnico', 'Evolução do técnico de enfermagem'), ('enfermagem', 'Evolução de enfermagem'), ('medica', 'Evolução médica')] %}
+  {% if evolucoes[tipo] %}
+  <div class="bloco">
+    <h3>{{ titulo }}</h3>
+    {% for e in evolucoes[tipo]|reverse %}
+      <div style="margin-bottom:8px;{{ 'text-decoration:line-through;opacity:.6' if e.anulada_em }}">
+        <small><b>{{ e.criado_em|data }}</b> — {{ e.autor_nome }}{% if e.autor_registro %} ({{ e.autor_registro }}){% endif %}</small><br>
+        <span style="white-space:pre-wrap">{{ e.texto }}</span> {{ mostrar_vitais(e) }}
+      </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% if at.resumo_alta %}
+<div class="bloco"><h3>Resumo da saída</h3><p style="white-space:pre-wrap;margin:0">{{ at.resumo_alta }}</p>
+  {% if nomes.alta_por %}<div class="assinatura"><div class="traco"></div>{{ nomes.alta_por.nome }}{% if nomes.alta_por.registro_conselho %} — {{ nomes.alta_por.registro_conselho }}{% endif %}</div>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

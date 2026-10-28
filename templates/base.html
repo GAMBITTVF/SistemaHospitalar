@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Sistema Hospitalar{% endblock %} · Sistema Hospitalar</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+</head>
+<body>
+{% if usuario %}
+<header class="topo">
+  <a class="marca" href="{{ url_for('inicio') }}"><span class="cruz">+</span> Sistema Hospitalar</a>
+  <div class="quem">
+    <strong>{{ usuario.nome }}</strong> · {{ PAPEIS[usuario.papel] }}
+    {% if usuario.registro_conselho %}({{ usuario.registro_conselho }}){% endif %}
+    <a href="{{ url_for('auth.trocar_senha') }}">Alterar senha</a>
+    <a href="{{ url_for('auth.logout') }}">Sair</a>
+  </div>
+</header>
+<div class="estrutura">
+  <nav class="menu">
+    {% set ep = request.endpoint or '' %}
+    {% if pode_ver('direcao') %}
+      <div class="grupo">Direção</div>
+      <a href="{{ url_for('direcao.painel') }}" class="{{ 'ativo' if ep == 'direcao.painel' }}">Visão geral</a>
+    {% endif %}
+    {% if pode_ver('cadastro') %}
+      <div class="grupo">Recepção</div>
+      <a href="{{ url_for('recepcao.busca') }}" class="{{ 'ativo' if ep.startswith('recepcao.') }}">Pacientes</a>
+    {% endif %}
+    {% if pode_ver('painel') %}
+      <div class="grupo">Assistência</div>
+      <a href="{{ url_for('clinico.painel') }}" class="{{ 'ativo' if ep in ('clinico.painel', 'clinico.atendimento') }}">Painel de pacientes</a>
+    {% endif %}
+    {% if pode_ver('relatorios') %}
+      <a href="{{ url_for('clinico.relatorio_medicacoes') }}" class="{{ 'ativo' if ep == 'clinico.relatorio_medicacoes' }}">Relatório de medicações</a>
+    {% endif %}
+    {% if pode_ver('central_transferencia') %}
+      <div class="grupo">Transferência</div>
+      <a href="{{ url_for('transferencia.lista') }}" class="{{ 'ativo' if ep.startswith('transferencia.') }}">Central de transferência</a>
+    {% endif %}
+    {% if pode_ver('aih') %}
+      <div class="grupo">Faturamento</div>
+      <a href="{{ url_for('aih.lista') }}" class="{{ 'ativo' if ep.startswith('aih.') }}">AIH / Faturamento</a>
+    {% endif %}
+    {% if pode_ver('usuarios') or pode_ver('auditoria') %}
+      <div class="grupo">Sistema</div>
+    {% endif %}
+    {% if pode_ver('usuarios') %}
+      <a href="{{ url_for('admin.usuarios') }}" class="{{ 'ativo' if ep.startswith('admin.') }}">Usuários e permissões</a>
+    {% endif %}
+    {% if pode_ver('auditoria') %}
+      <a href="{{ url_for('direcao.auditoria') }}" class="{{ 'ativo' if ep == 'direcao.auditoria' }}">Auditoria</a>
+    {% endif %}
+  </nav>
+  <main class="conteudo">
+    {% include '_mensagens.html' %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  {% block publico %}{% endblock %}
+{% endif %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

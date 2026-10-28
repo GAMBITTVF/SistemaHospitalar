@@ -1,0 +1,335 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco, status_atendimento, sinais_vitais, mostrar_vitais with context %}
+{% block titulo %}Atendimento {{ at.id }} - {{ paciente.nome }}{% endblock %}
+
+{% macro leitura(secao) -%}
+  {%- if not pode_editar(secao) -%}<div class="somente-leitura">🔒 Somente leitura para o seu cargo</div>{%- endif -%}
+{%- endmacro %}
+
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endmacro %}
+
+{% macro bloco_evolucao(tipo, titulo, secao, ativo) %}
+<div class="cartao" id="evol-{{ tipo }}">
+  <h2>{{ titulo }}</h2>
+  {{ leitura(secao) }}
+  {% if ativo and pode_editar(secao) %}
+  <details {{ 'open' if not evolucoes[tipo] }}>
+    <summary>+ Nova evolução</summary>
+    <form method="post" action="{{ url_for('clinico.evolucao', atendimento_id=at.id, tipo=tipo) }}">
+      {{ csrf() }}
+      <textarea name="texto" required minlength="10" maxlength="4000"
+        placeholder="{{ 'Como o paciente passou o período: alimentação, eliminações, sono, queixas, procedimentos realizados...' if tipo != 'medica' else 'Evolução médica: quadro clínico, exame físico, conduta...' }}"></textarea>
+      {% if tipo != 'medica' %}{{ sinais_vitais() }}{% endif %}
+      <button class="botao" style="margin-top:6px">Registrar evolução</button>
+    </form>
+  </details>
+  {% endif %}
+  {% for e in evolucoes[tipo] %}
+    <div class="evolucao {{ 'anulada' if e.anulada_em }}">
+      <div class="meta">
+        <span><b>{{ e.autor_nome }}</b> · {{ PAPEIS[e.autor_papel] }}{% if e.autor_registro %} · {{ e.autor_registro }}{% endif %}</span>
+        <span>{{ e.criado_em|data }}</span>
+      </div>
+      <div class="texto">{{ e.texto }}</div>
+      {{ mostrar_vitais(e) }}
+      {% if e.anulada_em %}
+        <div class="msg-erro" style="text-decoration:none">Anulado por {{ e.anulada_por_nome }} em {{ e.anulada_em|data }}: {{ e.anulada_motivo }}</div>
+      {% elif ativo and pode_editar(secao) %}
+        <details><summary style="font-size:.8rem;color:var(--erro)">Anular registro</summary>
+          <form method="post" action="{{ url_for('clinico.anular_evolucao', evolucao_id=e.id) }}" class="acoes">
+            {{ csrf() }}<input name="motivo" required minlength="5" placeholder="Motivo da anulação" style="flex:1">
+            <button class="botao pequeno perigo">Anular</button>
+          </form>
+        </details>
+      {% endif %}
+    </div>
+  {% else %}
+    <p class="vazio">Nenhum registro.</p>
+  {% endfor %}
+</div>
+{% endmacro %}
+
+{% block conteudo %}
+{% set ativo = at.status != 'finalizado' %}
+<div class="cabecalho">
+  <div>
+    <h1>{{ paciente.nome }}</h1>
+    <small>Atendimento nº {{ at.id }} · Prontuário {{ paciente.id }} · Entrada {{ at.entrada|data }}
+      {% if ativo %}· há {{ horas_desde(at.entrada) }}h{% else %}· Saída {{ at.saida|data }}{% endif %}</small>
+  </div>
+  <div class="acoes">
+    {{ risco(at.risco) }} {{ status_atendimento(at.status) }}
+    {% if pode_ver('relatorios') %}<a class="botao secundario pequeno" href="{{ url_for('clinico.relatorio', atendimento_id=at.id) }}" target="_blank">Relatório do atendimento</a>{% endif %}
+    {% if internacao %}<a class="botao secundario pequeno" href="{{ url_for('clinico.imprimir_capa', internacao_id=internacao.id) }}" target="_blank">Capa de internação</a>{% endif %}
+  </div>
+</div>
+
+<div class="cartao destaque">
+  <div class="paciente-topo">
+    <span><b>Idade:</b> {{ idade(paciente.data_nascimento) }} anos ({{ paciente.data_nascimento|dia }})</span>
+    <span><b>Sexo:</b> {{ SEXOS[paciente.sexo] }}</span>
+    <span><b>CPF:</b> {{ paciente.cpf|cpf }}</span>
+    <span><b>SUS:</b> {{ paciente.cns|cns }}</span>
+    <span><b>Mãe:</b> {{ paciente.nome_mae }}</span>
+    <span><b>Telefone:</b> {{ paciente.telefone|telefone }}</span>
+    {% if at.acompanhante %}<span><b>Acompanhante:</b> {{ at.acompanhante }}</span>{% endif %}
+  </div>
+  <div style="margin-top:8px"><b class="suave">Motivo da procura (recepção):</b> {{ at.motivo_procura }}</div>
+  {% if at.hipotese_diagnostica %}<div><b class="suave">Hipótese diagnóstica:</b> {{ at.hipotese_diagnostica }}{% if at.cid_principal %} — <b>CID {{ at.cid_principal }}</b>{% endif %}</div>{% endif %}
+  {% if paciente.alergias %}<div class="alergia">⚠ ALERGIAS: {{ paciente.alergias }}</div>{% endif %}
+  {% if pode_editar('alergias') %}
+  <details><summary>Atualizar alergias</summary>
+    <form method="post" action="{{ url_for('clinico.alergias', paciente_id=paciente.id) }}" class="acoes">
+      {{ csrf() }}<input type="hidden" name="atendimento_id" value="{{ at.id }}">
+      <input name="alergias" value="{{ paciente.alergias or '' }}" maxlength="500" placeholder="Deixe em branco se não houver alergias conhecidas" style="flex:1">
+      <button class="botao pequeno">Salvar</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+{% if internacao and internacao.status == 'pendente_assinatura' %}
+  <div class="mensagem aviso">Internação gerada em {{ internacao.criada_em|data }}
+    ({{ 'automática: permanência maior que 24h' if internacao.origem == 'automatica_24h' else 'por decisão médica' }}) —
+    a capa aguarda preenchimento e assinatura do médico.</div>
+{% endif %}
+{% if transferencia_ativa %}
+  <div class="mensagem info">Transferência em andamento: {{ STATUS_TRANSFERENCIA[transferencia_ativa.status] }}
+    {% if transferencia_ativa.hospital_destino %}— destino {{ transferencia_ativa.hospital_destino }}{% endif %}</div>
+{% endif %}
+{% if not ativo %}
+  <div class="mensagem info">Atendimento finalizado ({{ TIPOS_SAIDA[at.tipo_saida] }}) em {{ at.saida|data }}. Prontuário somente para consulta.</div>
+{% endif %}
+
+<nav class="secao-nav">
+  <a href="#triagem">Classificação de risco</a>
+  <a href="#medicacao">Medicações</a>
+  <a href="#evol-tecnico">Técnico de enfermagem</a>
+  <a href="#evol-enfermagem">Enfermagem</a>
+  <a href="#evol-medica">Médico</a>
+  <a href="#diagnostico">Diagnóstico</a>
+  <a href="#internacao">Internação</a>
+  <a href="#transferencia">Transferência</a>
+  <a href="#alta">Alta</a>
+  <a href="#historico">Passagens anteriores ({{ passagens|length }})</a>
+</nav>
+
+<!-- Classificação de risco -->
+<div class="cartao" id="triagem">
+  <h2>Classificação de risco</h2>
+  {{ leitura('triagem') }}
+  {% if at.risco %}
+    <p>{{ risco(at.risco) }} em {{ at.triagem_em|data }} por {{ nomes.triagem_por.nome }} {% if nomes.triagem_por.registro_conselho %}({{ nomes.triagem_por.registro_conselho }}){% endif %}</p>
+  {% else %}<p class="vazio">Paciente ainda não classificado.</p>{% endif %}
+  {% if ativo and pode_editar('triagem') %}
+  <details {{ 'open' if not at.risco }}>
+    <summary>{{ 'Reclassificar' if at.risco else 'Classificar risco' }}</summary>
+    <form method="post" action="{{ url_for('clinico.triagem', atendimento_id=at.id) }}">
+      {{ csrf() }}
+      <div class="acoes" style="margin-bottom:8px">
+        {% for k, r in RISCOS.items() %}
+          <label style="display:flex;gap:6px;align-items:center;font-weight:400"><input type="radio" name="risco" value="{{ k }}" style="width:auto" required> <span class="risco risco-{{ k }}">{{ r.nome }}</span></label>
+        {% endfor %}
+      </div>
+      <textarea name="observacao" required minlength="5" placeholder="Queixa, discriminadores, avaliação inicial..."></textarea>
+      {{ sinais_vitais() }}
+      <button class="botao">Registrar classificação</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+<!-- Medicações -->
+<div class="cartao" id="medicacao">
+  <h2>Medicações</h2>
+  {% if not pode_editar('prescricao') and not pode_editar('administracao') %}{{ leitura('prescricao') }}{% endif %}
+  {% if prescricoes %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Medicamento</th><th>Dose / via / frequência</th><th>Prescrito por</th><th>Doses dadas</th><th>Situação</th><th></th></tr>
+    {% for p in prescricoes %}
+    <tr>
+      <td><b>{{ p.medicamento }}</b>{% if p.observacao %}<br><small>{{ p.observacao }}</small>{% endif %}</td>
+      <td>{{ p.dose }} · {{ p.via }} · {{ p.frequencia }}</td>
+      <td>{{ p.medico_nome }}<br><small>{{ p.prescrito_em|data }}</small></td>
+      <td><b>{{ p.total_administrado }}</b>{% if p.ultima_dose %}<br><small>última: {{ p.ultima_dose|data }}</small>{% endif %}</td>
+      <td><span class="etiqueta {{ 'ok' if p.status == 'ativa' }}">{{ 'Ativa' if p.status == 'ativa' else 'Suspensa' }}</span></td>
+      <td>
+        {% if ativo and p.status == 'ativa' %}
+          {% if pode_editar('administracao') %}
+          <form method="post" action="{{ url_for('clinico.administrar', prescricao_id=p.id) }}" class="acoes" style="margin-bottom:4px"
+                data-confirmar="Confirmar administração de {{ p.medicamento }} {{ p.dose }} agora?">
+            {{ csrf() }}<input name="observacao" placeholder="Obs. (opcional)" style="width:130px;padding:4px 6px;font-size:.8rem">
+            <button class="botao pequeno">✔ Administrado</button>
+          </form>
+          {% endif %}
+          {% if pode_editar('prescricao') %}
+          <form method="post" action="{{ url_for('clinico.suspender', prescricao_id=p.id) }}" data-confirmar="Suspender esta prescrição?">
+            {{ csrf() }}<button class="botao pequeno secundario">Suspender</button>
+          </form>
+          {% endif %}
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhuma medicação prescrita.</p>{% endif %}
+
+  {% if ativo and pode_editar('prescricao') %}
+  <details {{ 'open' if not prescricoes }}><summary>+ Prescrever medicação</summary>
+    <form method="post" action="{{ url_for('clinico.prescrever', atendimento_id=at.id) }}">
+      {{ csrf() }}
+      <div class="campos">
+        <div class="c4"><label>Medicamento <span class="obrig">*</span></label><input name="medicamento" required maxlength="200" placeholder="Ex.: Dipirona 500mg/ml"></div>
+        <div class="c2"><label>Dose <span class="obrig">*</span></label><input name="dose" required maxlength="60" placeholder="Ex.: 2 ml"></div>
+        <div class="c2"><label>Via <span class="obrig">*</span></label><select name="via" required><option value=""></option>{% for v in vias %}<option>{{ v }}</option>{% endfor %}</select></div>
+        <div class="c2"><label>Frequência <span class="obrig">*</span></label><input name="frequencia" required maxlength="60" placeholder="6/6h, dose única, SOS"></div>
+        <div class="c2"><label>Observação</label><input name="observacao" maxlength="200"></div>
+      </div>
+      <button class="botao" style="margin-top:10px">Prescrever</button>
+    </form>
+  </details>
+  {% endif %}
+
+  {% if administracoes %}
+  <details><summary>Histórico de administrações ({{ administracoes|length }})</summary>
+    <table>
+      <tr><th>Data/hora</th><th>Medicamento</th><th>Profissional</th><th>Obs.</th></tr>
+      {% for ad in administracoes %}
+      <tr><td>{{ ad.administrado_em|data }}</td><td>{{ ad.medicamento }} {{ ad.dose }} ({{ ad.via }})</td>
+        <td>{{ ad.profissional }} <small>· {{ PAPEIS[ad.profissional_papel] }}</small></td><td>{{ ad.observacao or '' }}</td></tr>
+      {% endfor %}
+    </table>
+  </details>
+  {% endif %}
+</div>
+
+<div class="grade grade-2">
+  {{ bloco_evolucao('tecnico', 'Evolução do técnico de enfermagem', 'evolucao_tecnico', ativo) }}
+  {{ bloco_evolucao('enfermagem', 'Evolução de enfermagem (enfermeiro)', 'evolucao_enfermagem', ativo) }}
+</div>
+{{ bloco_evolucao('medica', 'Evolução médica', 'evolucao_medica', ativo) }}
+
+<!-- Diagnóstico -->
+<div class="cartao" id="diagnostico">
+  <h2>Diagnóstico</h2>
+  {{ leitura('diagnostico') }}
+  {% if ativo and pode_editar('diagnostico') %}
+  <form method="post" action="{{ url_for('clinico.diagnostico', atendimento_id=at.id) }}">
+    {{ csrf() }}
+    <div class="campos">
+      <div class="c9"><label>Hipótese diagnóstica <span class="obrig">*</span></label><input name="hipotese_diagnostica" value="{{ at.hipotese_diagnostica or '' }}" required maxlength="1000"></div>
+      <div class="c3"><label>CID-10</label><input name="cid_principal" value="{{ at.cid_principal or '' }}" maxlength="6" placeholder="Ex.: J18.9" style="text-transform:uppercase"></div>
+    </div>
+    <button class="botao" style="margin-top:10px">Salvar diagnóstico</button>
+  </form>
+  {% else %}
+    <p>{{ at.hipotese_diagnostica or 'Não informado.' }}{% if at.cid_principal %} — CID {{ at.cid_principal }}{% endif %}</p>
+  {% endif %}
+</div>
+
+<!-- Internação -->
+<div class="cartao" id="internacao">
+  <h2>Internação</h2>
+  {{ leitura('internacao') }}
+  {% if internacao %}
+    <p>{{ STATUS_INTERNACAO[internacao.status] }} · gerada em {{ internacao.criada_em|data }}
+      ({{ 'automática >24h' if internacao.origem == 'automatica_24h' else 'decisão médica' }})
+      {% if internacao.assinada_em %}· assinada por <b>{{ internacao.medico_nome }}</b> ({{ internacao.medico_registro }}) em {{ internacao.assinada_em|data }}{% endif %}</p>
+    {% if ativo and internacao.status == 'pendente_assinatura' and pode_editar('internacao') %}
+    <form method="post" action="{{ url_for('clinico.salvar_capa', internacao_id=internacao.id) }}">
+      {{ csrf() }}
+      <div class="campos">
+        <div class="c8"><label>Diagnóstico / o que o paciente tem <span class="obrig">*</span></label><input name="diagnostico" value="{{ internacao.diagnostico or at.hipotese_diagnostica or '' }}" maxlength="1000"></div>
+        <div class="c2"><label>CID principal <span class="obrig">*</span></label><input name="cid_principal" value="{{ internacao.cid_principal or at.cid_principal or '' }}" maxlength="6" style="text-transform:uppercase"></div>
+        <div class="c2"><label>CID secundário</label><input name="cid_secundario" value="{{ internacao.cid_secundario or '' }}" maxlength="6" style="text-transform:uppercase"></div>
+        <div class="c9"><label>Descrição rápida de como o paciente chegou <span class="obrig">*</span></label><textarea name="descricao_chegada" maxlength="1000">{{ internacao.descricao_chegada or '' }}</textarea></div>
+        <div class="c3"><label>Leito</label><input name="leito" value="{{ internacao.leito or '' }}" maxlength="30"></div>
+        <div class="c12"><label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="assinar" value="1" style="width:auto" data-alterna="senha-assinatura"> Assinar a capa agora (após assinada não poderá ser alterada)</label></div>
+        <div class="c4" id="senha-assinatura"><label>Confirme sua senha para assinar</label><input type="password" name="senha" autocomplete="current-password"></div>
+      </div>
+      <button class="botao" style="margin-top:10px">Salvar capa</button>
+    </form>
+    {% else %}
+      <div class="grade grade-3" style="gap:4px 16px">
+        <div class="dado"><b>Diagnóstico</b>{{ internacao.diagnostico or '—' }}</div>
+        <div class="dado"><b>CID</b>{{ internacao.cid_principal or '—' }}{% if internacao.cid_secundario %} / {{ internacao.cid_secundario }}{% endif %}</div>
+        <div class="dado"><b>Leito</b>{{ internacao.leito or '—' }}</div>
+        <div class="dado" style="grid-column:1/-1"><b>Chegada</b>{{ internacao.descricao_chegada or '—' }}</div>
+      </div>
+    {% endif %}
+  {% else %}
+    <p class="vazio">Sem internação. Ela é gerada automaticamente se o paciente permanecer mais de 24h.</p>
+    {% if ativo and pode_editar('internacao') %}
+    <form method="post" action="{{ url_for('clinico.internar', atendimento_id=at.id) }}" data-confirmar="Gerar internação para este paciente agora?">
+      {{ csrf() }}<button class="botao secundario">Internar agora</button>
+    </form>
+    {% endif %}
+  {% endif %}
+</div>
+
+<!-- Transferência -->
+<div class="cartao" id="transferencia">
+  <h2>Transferência</h2>
+  {{ leitura('solicitar_transferencia') }}
+  {% for t in transferencias %}
+    <div class="evolucao">
+      <div class="meta"><span><b>{{ MOTIVOS_TRANSFERENCIA[t.motivo] }}</b> · solicitada por {{ t.solicitante_nome }}</span><span>{{ t.solicitada_em|data }}</span></div>
+      <div class="texto">{{ t.justificativa }}{% if t.especialidade %}<br><small>Especialidade/recurso necessário: {{ t.especialidade }}</small>{% endif %}</div>
+      <div style="margin-top:6px"><span class="etiqueta {{ 'ok' if t.status == 'concluida' else 'critico' if t.status == 'cancelada' else 'alerta' }}">{{ STATUS_TRANSFERENCIA[t.status] }}</span>
+        {% if t.hospital_destino %} Destino: <b>{{ t.hospital_destino }}</b>{% endif %}
+        {% if t.protocolo_regulacao %} · Protocolo {{ t.protocolo_regulacao }}{% endif %}
+        {% if pode_ver('central_transferencia') %} · <a href="{{ url_for('transferencia.detalhe', transferencia_id=t.id) }}">ver na central</a>{% endif %}</div>
+    </div>
+  {% else %}<p class="vazio">Nenhuma transferência solicitada.</p>{% endfor %}
+  {% if ativo and pode_editar('solicitar_transferencia') and not transferencia_ativa %}
+  <details><summary>Enviar paciente para a Central de Transferência</summary>
+    <form method="post" action="{{ url_for('clinico.solicitar_transferencia', atendimento_id=at.id) }}" data-confirmar="Encaminhar este paciente para transferência?">
+      {{ csrf() }}
+      <div class="campos">
+        <div class="c4"><label>Motivo <span class="obrig">*</span></label><select name="motivo" required><option value=""></option>{% for k, v in motivos.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+        <div class="c8"><label>Especialidade / recurso necessário</label><input name="especialidade" maxlength="120" placeholder="Ex.: Cirurgia vascular, UTI adulto, tomografia..."></div>
+        <div class="c12"><label>Justificativa clínica <span class="obrig">*</span></label><textarea name="justificativa" required minlength="10" placeholder="Quais materiais/recursos faltam e por que o paciente precisa ser transferido"></textarea></div>
+      </div>
+      <button class="botao" style="margin-top:10px">Solicitar transferência</button>
+    </form>
+  </details>
+  {% endif %}
+</div>
+
+<!-- Alta -->
+<div class="cartao" id="alta">
+  <h2>Alta / saída</h2>
+  {{ leitura('alta') }}
+  {% if not ativo %}
+    <p><b>{{ TIPOS_SAIDA[at.tipo_saida] }}</b> em {{ at.saida|data }}{% if nomes.alta_por %} por {{ nomes.alta_por.nome }}{% endif %}</p>
+    <p style="white-space:pre-wrap">{{ at.resumo_alta }}</p>
+    {% if aih %}<p><span class="etiqueta">AIH: {{ STATUS_AIH[aih.status] }}</span></p>{% endif %}
+  {% elif pode_editar('alta') %}
+  <form method="post" action="{{ url_for('clinico.alta', atendimento_id=at.id) }}" data-confirmar="Confirmar a saída do paciente? O prontuário será fechado.">
+    {{ csrf() }}
+    <div class="campos">
+      <div class="c4"><label>Tipo de saída <span class="obrig">*</span></label><select name="tipo_saida" required><option value=""></option>{% for k in tipos_saida %}<option value="{{ k }}">{{ TIPOS_SAIDA[k] }}</option>{% endfor %}</select></div>
+      <div class="c12"><label>Resumo / orientações de alta <span class="obrig">*</span></label><textarea name="resumo_alta" required minlength="10"></textarea></div>
+    </div>
+    <button class="botao" style="margin-top:10px">Registrar saída</button>
+    {% if internacao %}<small> · Com internação: a conta segue para o faturamento (AIH).</small>{% else %}<small> · Sem internação: gera apenas o relatório do atendimento.</small>{% endif %}
+  </form>
+  {% else %}<p class="vazio">Paciente em atendimento.</p>{% endif %}
+</div>
+
+<!-- Histórico -->
+<div class="cartao" id="historico">
+  <h2>Passagens anteriores</h2>
+  {% if passagens %}
+  <table>
+    <tr><th>Nº</th><th>Entrada</th><th>Saída</th><th>Motivo</th><th>Diagnóstico</th><th>Internação</th><th></th></tr>
+    {% for a in passagens %}
+    <tr><td>{{ a.id }}</td><td>{{ a.entrada|data }}</td><td>{{ a.saida|data }}</td><td>{{ a.motivo_procura|truncate(70) }}</td>
+      <td>{{ a.hipotese_diagnostica or '—' }}{% if a.cid_principal %} ({{ a.cid_principal }}){% endif %}</td>
+      <td>{{ 'Sim' if a.teve_internacao else 'Não' }}</td>
+      <td><a class="botao pequeno secundario" href="{{ url_for('clinico.atendimento', atendimento_id=a.id) }}">Ver</a></td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="vazio">Nenhuma passagem anterior.</p>{% endif %}
+</div>
+{% endblock %}

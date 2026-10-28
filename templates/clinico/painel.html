@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco, status_atendimento with context %}
+{% block titulo %}Painel de pacientes{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Painel de pacientes</h1><small>Ordenado por gravidade (classificação de risco) e tempo de espera. Atendimentos com mais de 24h viram internação automaticamente.</small></div>
+  <a class="botao secundario" href="{{ request.full_path }}">Atualizar</a>
+</div>
+<div class="secao-nav" style="position:static">
+  {% for chave, nome in [('todos', 'Todos'), ('triagem', 'Aguardando classificação'), ('aberto', 'Em atendimento'), ('internado', 'Internados'), ('aguardando_transferencia', 'Aguardando transferência')] %}
+    <a href="{{ url_for('clinico.painel', filtro=chave) }}" style="{{ 'background:var(--verde);color:#fff' if filtro == chave }}">{{ nome }}</a>
+  {% endfor %}
+</div>
+<div class="cartao">
+  {% if atendimentos %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Risco</th><th>Nº</th><th>Paciente</th><th>Entrada</th><th>Tempo</th><th>Situação</th><th>Motivo</th><th></th></tr>
+    {% for a in atendimentos %}
+    {% set horas = horas_desde(a.entrada) %}
+    <tr>
+      <td>{{ risco(a.risco) }}</td>
+      <td>{{ a.id }}</td>
+      <td><b>{{ a.nome }}</b><br><small>{{ idade(a.data_nascimento) }} anos · {{ SEXOS[a.sexo] }}{% if a.leito %} · Leito {{ a.leito }}{% endif %}</small>
+        {% if a.alergias %}<br><span class="etiqueta critico">Alergia: {{ a.alergias }}</span>{% endif %}</td>
+      <td>{{ a.entrada|data }}</td>
+      <td><span class="etiqueta {{ 'critico' if horas >= 24 else 'alerta' if horas >= 12 else '' }}">{{ horas }}h</span></td>
+      <td>{{ status_atendimento(a.status) }}
+        {% if a.internacao_status == 'pendente_assinatura' %}<br><span class="etiqueta critico">Capa sem assinatura</span>{% endif %}
+        {% if a.prescricoes_ativas %}<br><small>{{ a.prescricoes_ativas }} prescrição(ões) ativa(s)</small>{% endif %}</td>
+      <td style="max-width:260px">{{ a.motivo_procura|truncate(90) }}</td>
+      <td><a class="botao pequeno" href="{{ url_for('clinico.atendimento', atendimento_id=a.id) }}">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhum paciente nesta lista.</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import status_atendimento, risco with context %}
+{% block titulo %}{{ p.nome }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>{{ p.nome }}</h1><small>Prontuário nº {{ p.id }} · cadastrado em {{ p.criado_em|data }}</small></div>
+  <div class="acoes">
+    {% if pode_editar('cadastro') %}<a class="botao secundario" href="{{ url_for('recepcao.editar', paciente_id=p.id) }}">Editar cadastro</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('recepcao.busca') }}">Voltar</a>
+  </div>
+</div>
+
+<div class="grade grade-2">
+  <div class="cartao destaque">
+    <h2>Dados do paciente</h2>
+    <div class="grade grade-2" style="gap:4px 16px">
+      {% if p.nome_social %}<div class="dado"><b>Nome social</b>{{ p.nome_social }}</div>{% endif %}
+      <div class="dado"><b>Nascimento</b>{{ p.data_nascimento|dia }} ({{ idade(p.data_nascimento) }} anos)</div>
+      <div class="dado"><b>Sexo</b>{{ SEXOS[p.sexo] }}</div>
+      <div class="dado"><b>CPF</b>{{ p.cpf|cpf }}</div>
+      <div class="dado"><b>Cartão SUS</b>{{ p.cns|cns }}</div>
+      <div class="dado"><b>Mãe</b>{{ p.nome_mae }}</div>
+      <div class="dado"><b>Telefone</b>{{ p.telefone|telefone }}</div>
+      <div class="dado"><b>Endereço</b>{{ p.logradouro }}, {{ p.numero }}{% if p.complemento %} - {{ p.complemento }}{% endif %}<br>
+        {{ p.bairro }} · {{ p.cidade }}/{{ p.uf }} · CEP {{ p.cep|cep }}</div>
+    </div>
+    {% if p.alergias %}<div class="alergia">⚠ Alergias: {{ p.alergias }}</div>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Atendimento atual</h2>
+    {% if aberto %}
+      <p>Atendimento <b>nº {{ aberto.id }}</b> aberto em {{ aberto.entrada|data }}<br>
+        {{ status_atendimento(aberto.status) }} {{ risco(aberto.risco) }}</p>
+      {% if pode_ver('atendimento') %}<a class="botao" href="{{ url_for('clinico.atendimento', atendimento_id=aberto.id) }}">Abrir prontuário</a>{% endif %}
+    {% elif pode_editar('abertura') %}
+      <form method="post" action="{{ url_for('recepcao.abrir_atendimento', paciente_id=p.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="margin-bottom:10px">
+          <label>Motivo da procura (relato do paciente) <span class="obrig">*</span></label>
+          <textarea name="motivo_procura" required minlength="3" maxlength="1000" placeholder="Ex.: dor abdominal há 2 dias, febre..."></textarea>
+        </div>
+        <div style="margin-bottom:12px">
+          <label>Acompanhante</label>
+          <input name="acompanhante" maxlength="120" placeholder="Nome e parentesco (opcional)">
+        </div>
+        <button class="botao">Iniciar novo atendimento</button>
+      </form>
+    {% else %}
+      <p class="vazio">Nenhum atendimento em andamento.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="cartao">
+  <h2>Passagens pela unidade ({{ passagens|length }})</h2>
+  {% if passagens %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Nº</th><th>Entrada</th><th>Saída</th><th>Situação</th><th>Internação</th>{% if pode_ver('atendimento') %}<th>Motivo / diagnóstico</th><th></th>{% endif %}</tr>
+    {% for a in passagens %}
+    <tr>
+      <td>{{ a.id }}</td><td>{{ a.entrada|data }}</td><td>{{ a.saida|data }}</td>
+      <td>{{ status_atendimento(a.status) }}{% if a.tipo_saida %}<br><small>{{ TIPOS_SAIDA[a.tipo_saida] }}</small>{% endif %}</td>
+      <td>{{ 'Sim' if a.teve_internacao else 'Não' }}</td>
+      {% if pode_ver('atendimento') %}
+        <td>{{ a.motivo_procura }}{% if a.cid_principal %}<br><small>CID {{ a.cid_principal }} - {{ a.hipotese_diagnostica }}</small>{% endif %}</td>
+        <td><a class="botao pequeno secundario" href="{{ url_for('clinico.atendimento', atendimento_id=a.id) }}">Ver</a></td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Primeira passagem do paciente.</p>{% endif %}
+</div>
+{% endblock %}

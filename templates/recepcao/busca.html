@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import status_atendimento with context %}
+{% block titulo %}Pacientes{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Pacientes</h1><small>Busque pelo nome, CPF, cartão do SUS ou nº do prontuário antes de cadastrar.</small></div>
+  {% if pode_editar('cadastro') %}<a class="botao" href="{{ url_for('recepcao.novo') }}">+ Novo paciente</a>{% endif %}
+</div>
+
+<form class="cartao" method="get">
+  <div class="acoes">
+    <input name="q" value="{{ termo }}" placeholder="Nome, CPF, cartão SUS ou nº do prontuário" style="flex:1;min-width:240px" autofocus>
+    <button class="botao">Buscar</button>
+  </div>
+</form>
+
+{% if termo %}
+<div class="cartao">
+  <h2>Resultado da busca</h2>
+  {% if pacientes %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Prontuário</th><th>Nome</th><th>Nascimento</th><th>CPF</th><th>Cartão SUS</th><th></th></tr>
+    {% for p in pacientes %}
+    <tr>
+      <td>{{ p.id }}</td>
+      <td>{{ p.nome }}{% if p.nome_social %}<br><small>Nome social: {{ p.nome_social }}</small>{% endif %}</td>
+      <td>{{ p.data_nascimento|dia }}</td><td>{{ p.cpf|cpf }}</td><td>{{ p.cns|cns }}</td>
+      <td><a class="botao pequeno" href="{{ url_for('recepcao.paciente', paciente_id=p.id) }}">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}
+    <p class="vazio">Nenhum paciente encontrado — este é o primeiro atendimento dele na unidade.</p>
+    {% if pode_editar('cadastro') %}<a class="botao" href="{{ url_for('recepcao.novo', q=termo) }}">Cadastrar novo paciente</a>{% endif %}
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="cartao">
+  <h2>Entradas de hoje</h2>
+  {% if hoje %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Atendimento</th><th>Entrada</th><th>Paciente</th><th>Situação</th></tr>
+    {% for a in hoje %}
+    <tr>
+      <td>{{ a.id }}</td><td>{{ a.entrada|data }}</td>
+      <td><a href="{{ url_for('recepcao.paciente', paciente_id=a.paciente_id) }}">{{ a.nome }}</a></td>
+      <td>{{ status_atendimento(a.status) }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhuma entrada registrada hoje.</p>{% endif %}
+</div>
+{% endblock %}

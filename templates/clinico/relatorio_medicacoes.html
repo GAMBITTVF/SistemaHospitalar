@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block titulo %}Relatório de medicações{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Relatório de medicações</h1><small>Quantas doses foram dadas, quais medicamentos e para quantos pacientes.</small></div>
+  <button class="botao secundario nao-imprimir" onclick="window.print()">Imprimir</button>
+</div>
+<form class="cartao acoes nao-imprimir" method="get">
+  <div><label>De</label><input type="date" name="inicio" value="{{ inicio.isoformat() }}"></div>
+  <div><label>Até</label><input type="date" name="fim" value="{{ fim.isoformat() }}"></div>
+  <button class="botao" style="align-self:flex-end">Filtrar</button>
+</form>
+<div class="indicadores">
+  <div class="indicador"><div class="valor">{{ total_doses }}</div><div class="rotulo">Doses administradas</div></div>
+  <div class="indicador"><div class="valor">{{ resumo|length }}</div><div class="rotulo">Medicamentos diferentes</div></div>
+  <div class="indicador"><div class="valor">{{ so_medicacao }}</div><div class="rotulo">Atendimentos só com medicação (sem internação)</div></div>
+</div>
+<div class="cartao">
+  <h2>Por medicamento — {{ inicio.strftime('%d/%m/%Y') }} a {{ fim.strftime('%d/%m/%Y') }}</h2>
+  {% if resumo %}
+  <table>
+    <tr><th>Medicamento</th><th>Doses</th><th>Pacientes</th><th>Atendimentos</th></tr>
+    {% for r in resumo %}<tr><td>{{ r.medicamento }}</td><td><b>{{ r.doses }}</b></td><td>{{ r.pacientes }}</td><td>{{ r.atendimentos }}</td></tr>{% endfor %}
+  </table>
+  {% else %}<p class="vazio">Nenhuma medicação administrada no período.</p>{% endif %}
+</div>
+<div class="cartao">
+  <h2>Detalhamento</h2>
+  {% if detalhes %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Data/hora</th><th>Paciente</th><th>Medicamento</th><th>Profissional</th><th>Tipo</th></tr>
+    {% for d in detalhes %}
+    <tr><td>{{ d.administrado_em|data }}</td>
+      <td>{% if pode_abrir %}<a href="{{ url_for('clinico.atendimento', atendimento_id=d.atendimento_id) }}">{{ d.paciente }}</a>{% else %}{{ d.paciente }}{% endif %}</td>
+      <td>{{ d.medicamento }} {{ d.dose }} ({{ d.via }})</td><td>{{ d.profissional }} <small>· {{ PAPEIS[d.profissional_papel] }}</small></td>
+      <td>{{ 'Internação' if d.internado else 'Atendimento' }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Sem registros.</p>{% endif %}
+</div>
+{% endblock %}

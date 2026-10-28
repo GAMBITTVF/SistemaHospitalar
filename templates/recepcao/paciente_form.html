@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import campo with context %}
+{% block titulo %}{{ 'Novo paciente' if novo else 'Editar cadastro' }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>{{ 'Cadastro de paciente' if novo else 'Editar cadastro' }}</h1>
+    <small>Todos os campos com <span style="color:var(--erro)">*</span> são obrigatórios e validados (CPF e cartão SUS pelo dígito verificador).</small></div>
+</div>
+<form method="post" class="cartao" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <h2>Identificação</h2>
+  <div class="campos">
+    {{ campo('nome', 'Nome completo', dados, erros, classe='c8') }}
+    {{ campo('nome_social', 'Nome social', dados, erros, obrig=false, classe='c4') }}
+    {{ campo('cpf', 'CPF', dados, erros, classe='c4', mascara='cpf') }}
+    {{ campo('cns', 'Cartão Nacional de Saúde (SUS)', dados, erros, classe='c4', mascara='cns') }}
+    {{ campo('data_nascimento', 'Data de nascimento', dados, erros, tipo='date', classe='c2') }}
+    <div class="c2 {{ 'campo-erro' if erros.get('sexo') }}">
+      <label for="sexo">Sexo <span class="obrig">*</span></label>
+      <select id="sexo" name="sexo" required>
+        <option value="">Selecione</option>
+        {% for k, v in SEXOS.items() %}<option value="{{ k }}" {{ 'selected' if dados.get('sexo') == k }}>{{ v }}</option>{% endfor %}
+      </select>
+      {% if erros.get('sexo') %}<div class="msg-erro">{{ erros.sexo }}</div>{% endif %}
+    </div>
+    {{ campo('nome_mae', 'Nome da mãe', dados, erros, classe='c8') }}
+    {{ campo('telefone', 'Telefone (com DDD)', dados, erros, classe='c4', mascara='telefone') }}
+  </div>
+  <hr>
+  <h2>Endereço</h2>
+  <div class="campos">
+    {{ campo('cep', 'CEP', dados, erros, classe='c3', mascara='cep') }}
+    {{ campo('logradouro', 'Logradouro (rua, avenida...)', dados, erros, classe='c6') }}
+    {{ campo('numero', 'Número', dados, erros, classe='c3') }}
+    {{ campo('complemento', 'Complemento', dados, erros, obrig=false, classe='c4') }}
+    {{ campo('bairro', 'Bairro', dados, erros, classe='c4') }}
+    {{ campo('cidade', 'Cidade', dados, erros, classe='c3') }}
+    <div class="c1 {{ 'campo-erro' if erros.get('uf') }}">
+      <label for="uf">UF <span class="obrig">*</span></label>
+      <select id="uf" name="uf" required>
+        <option value=""></option>
+        {% for uf in ufs %}<option {{ 'selected' if dados.get('uf') == uf }}>{{ uf }}</option>{% endfor %}
+      </select>
+      {% if erros.get('uf') %}<div class="msg-erro">{{ erros.uf }}</div>{% endif %}
+    </div>
+  </div>
+  <hr>
+  <div class="acoes">
+    <button class="botao">{{ 'Cadastrar paciente' if novo else 'Salvar alterações' }}</button>
+    <a class="botao secundario" href="{{ url_for('recepcao.paciente', paciente_id=paciente.id) if paciente else url_for('recepcao.busca') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

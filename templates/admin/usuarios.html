@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Usuários e permissões</h1><small>Cada usuário recebe um cargo; o cargo define o que ele pode ver e editar.</small></div>
+  {% if pode_editar('usuarios') %}<a class="botao" href="{{ url_for('admin.formulario') }}">+ Novo usuário</a>{% endif %}
+</div>
+<div class="cartao">
+  <div class="tabela-rolagem"><table>
+    <tr><th>Nome</th><th>Login</th><th>Cargo</th><th>Registro</th><th>Situação</th>{% if pode_editar('usuarios') %}<th>Ações</th>{% endif %}</tr>
+    {% for u in usuarios %}
+    <tr style="{{ 'opacity:.55' if not u.ativo }}">
+      <td>{{ u.nome }}</td><td>{{ u.username }}</td><td>{{ PAPEIS[u.papel] }}</td><td>{{ u.registro_conselho or '—' }}</td>
+      <td>{% if not u.ativo %}<span class="etiqueta">Inativo</span>{% elif u.bloqueado_ate and u.bloqueado_ate > agora() %}<span class="etiqueta critico">Bloqueado</span>{% elif u.trocar_senha %}<span class="etiqueta alerta">Troca de senha pendente</span>{% else %}<span class="etiqueta ok">Ativo</span>{% endif %}</td>
+      {% if pode_editar('usuarios') %}
+      <td class="acoes">
+        <a class="botao pequeno secundario" href="{{ url_for('admin.formulario', usuario_id=u.id) }}">Editar</a>
+        <form method="post" action="{{ url_for('admin.resetar_senha', usuario_id=u.id) }}" data-confirmar="Gerar senha temporária para {{ u.username }}?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="botao pequeno secundario">Resetar senha</button></form>
+        {% if u.id != usuario.id %}
+        <form method="post" action="{{ url_for('admin.alternar_ativo', usuario_id=u.id) }}" data-confirmar="{{ 'Desativar' if u.ativo else 'Reativar' }} {{ u.username }}?">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="botao pequeno {{ 'perigo' if u.ativo else '' }}">{{ 'Desativar' if u.ativo else 'Reativar' }}</button></form>
+        {% endif %}
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table></div>
+</div>
+
+<div class="cartao">
+  <h2>Matriz de permissões</h2>
+  <p><small><b>E</b> = vê e edita · <b>V</b> = somente visualiza · vazio = sem acesso</small></p>
+  <div class="tabela-rolagem"><table>
+    <tr><th>Seção</th>{% for p, nome in PAPEIS.items() %}<th style="text-align:center">{{ nome }}</th>{% endfor %}</tr>
+    {% for secao, regra in permissoes.items() %}
+    <tr><td>{{ secao.replace('_', ' ')|capitalize }}</td>
+      {% for p in PAPEIS %}
+      <td style="text-align:center">{% if p in regra.editar %}<span class="etiqueta ok">E</span>{% elif p in regra.ver %}<span class="etiqueta">V</span>{% endif %}</td>
+      {% endfor %}</tr>
+    {% endfor %}
+  </table></div>
+</div>
+{% endblock %}

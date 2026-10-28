@@ -1,0 +1,41 @@
+{% extends 'documentos/_base_documento.html' %}
+{% block titulo %}Capa de internação - {{ paciente.nome }}{% endblock %}
+{% block cabecalho %}Capa de Internação Hospitalar{% endblock %}
+{% block corpo %}
+<div class="bloco">
+  <h3>Dados da internação</h3>
+  <div class="linha">
+    <div><b>Entrada na unidade:</b> {{ at.entrada|data }}</div>
+    <div><b>Internação:</b> {{ internacao.criada_em|data }}</div>
+    <div><b>Origem:</b> {{ 'Permanência > 24h' if internacao.origem == 'automatica_24h' else 'Decisão médica' }}</div>
+    <div><b>Leito:</b> {{ internacao.leito or '—' }}</div>
+    <div class="largo"><b>Classificação de risco:</b> {{ RISCOS[at.risco].nome if at.risco else 'Não classificado' }}</div>
+    <div class="largo"><b>Situação:</b> {{ STATUS_INTERNACAO[internacao.status] }}</div>
+  </div>
+</div>
+<div class="bloco">
+  <h3>Diagnóstico</h3>
+  <div class="linha">
+    <div class="total"><b>O que o paciente tem:</b> {{ internacao.diagnostico or '' }}</div>
+    <div class="largo"><b>CID-10 principal:</b> <span style="font-size:1.1rem;font-weight:700">{{ internacao.cid_principal or '________' }}</span></div>
+    <div class="largo"><b>CID-10 secundário:</b> {{ internacao.cid_secundario or '—' }}</div>
+  </div>
+</div>
+<div class="bloco">
+  <h3>Descrição de como o paciente chegou ao hospital</h3>
+  <p style="white-space:pre-wrap;margin:0">{{ internacao.descricao_chegada or '' }}</p>
+  {% if at.acompanhante %}<p style="margin:6px 0 0"><b>Acompanhante:</b> {{ at.acompanhante }}</p>{% endif %}
+</div>
+<div class="bloco">
+  <h3>Assinatura do médico responsável</h3>
+  {% if internacao.assinada_em %}
+    <p style="margin:0">Assinado eletronicamente por <b>{{ internacao.medico_nome }}</b> — {{ internacao.medico_registro }} — em {{ internacao.assinada_em|data }}.</p>
+  {% else %}
+    <p style="margin:0;color:var(--erro)">PENDENTE DE ASSINATURA</p>
+  {% endif %}
+  <div class="assinatura">
+    <div class="traco"></div>
+    {{ internacao.medico_nome or 'Médico responsável' }}{% if internacao.medico_registro %} — {{ internacao.medico_registro }}{% endif %}<br><small>Carimbo e assinatura</small>
+  </div>
+</div>
+{% endblock %}

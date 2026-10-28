@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block titulo %}Faturamento AIH{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Faturamento — AIH</h1><small>Internações encerradas para conferência e autorização de envio ao SISAIH01 / SIHD2.</small></div>
+</div>
+<div class="indicadores">
+  {% for s, nome in STATUS_AIH.items() %}
+  <a class="indicador {{ 'alerta' if s == 'pendencia' and contagem.get(s) }}" href="{{ url_for('aih.lista', status=s) }}" style="text-decoration:none;{{ 'outline:2px solid var(--verde)' if filtro == s }}">
+    <div class="valor">{{ contagem.get(s, 0) }}</div><div class="rotulo">{{ nome }}</div></a>
+  {% endfor %}
+  <a class="indicador" href="{{ url_for('aih.lista', status='todas') }}" style="text-decoration:none;{{ 'outline:2px solid var(--verde)' if filtro == 'todas' }}">
+    <div class="valor">{{ contagem.values()|sum }}</div><div class="rotulo">Todas</div></a>
+</div>
+
+{% if pode_editar('aih') %}
+<div class="cartao">
+  <h2>Exportar lote</h2>
+  <div class="acoes">
+    {% for s, n in prontas.items() %}
+    <form method="post" action="{{ url_for('aih.exportar') }}" data-confirmar="Gerar o lote {{ s }} com {{ n }} AIH(s)? Elas serão marcadas como exportadas.">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="sistema" value="{{ s }}">
+      <button class="botao {{ 'secundario' if not n }}" {{ 'disabled' if not n }}>Gerar lote {{ s }} ({{ n }})</button>
+    </form>
+    {% endfor %}
+  </div>
+  <small>O arquivo gerado usa um layout simplificado (CSV). Para importação oficial, ajuste ao leiaute DATASUS da competência.</small>
+</div>
+{% endif %}
+
+<div class="cartao">
+  {% if registros %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Paciente</th><th>Internação</th><th>Saída</th><th>CID</th><th>Situação</th><th>Nº AIH / Sistema</th><th></th></tr>
+    {% for r in registros %}
+    <tr>
+      <td><b>{{ r.nome }}</b><br><small>SUS {{ r.cns|cns }}</small></td>
+      <td>{{ r.entrada|data }}</td>
+      <td>{{ r.saida|data }}<br><small>{{ TIPOS_SAIDA[r.tipo_saida] }}</small></td>
+      <td>{{ r.cid_principal or '—' }}</td>
+      <td><span class="etiqueta {{ 'ok' if r.status in ('autorizada', 'exportada') else 'critico' if r.status == 'pendencia' else 'alerta' }}">{{ STATUS_AIH[r.status] }}</span>
+        {% if r.revisor %}<br><small>{{ r.revisor }}</small>{% endif %}</td>
+      <td>{{ r.numero_aih or '—' }}{% if r.sistema_destino %}<br><small>{{ r.sistema_destino }}</small>{% endif %}</td>
+      <td><a class="botao pequeno" href="{{ url_for('aih.detalhe', aih_id=r.id) }}">{{ 'Analisar' if r.status in ('pendente', 'pendencia') and pode_editar('aih') else 'Ver' }}</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhum registro.</p>{% endif %}
+</div>
+{% endblock %}

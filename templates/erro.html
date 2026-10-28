@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block titulo %}Erro {{ codigo }}{% endblock %}
+{% macro corpo() %}
+<div class="cartao destaque" style="max-width:640px">
+  <h1>{{ {400: 'Requisição inválida', 403: 'Acesso negado', 404: 'Não encontrado', 409: 'Operação não permitida'}.get(codigo, 'Erro') }}</h1>
+  <p>{{ mensagem }}</p>
+  <div class="acoes">
+    <a class="botao" href="{{ url_for('inicio') }}">Voltar ao início</a>
+    <a class="botao secundario" href="javascript:history.back()">Voltar à página anterior</a>
+  </div>
+</div>
+{% endmacro %}
+{% block conteudo %}{{ corpo() }}{% endblock %}
+{% block publico %}<div style="padding:40px">{{ corpo() }}</div>{% endblock %}

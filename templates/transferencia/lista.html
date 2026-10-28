@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco with context %}
+{% block titulo %}Central de transferência{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Central de transferência</h1><small>Pacientes encaminhados pelo médico por falta de materiais, especialidade, leito ou exame.</small></div>
+  <div class="acoes">
+    <a class="botao {{ '' if filtro == 'ativas' else 'secundario' }}" href="{{ url_for('transferencia.lista', filtro='ativas') }}">Em andamento</a>
+    <a class="botao {{ '' if filtro == 'todas' else 'secundario' }}" href="{{ url_for('transferencia.lista', filtro='todas') }}">Todas</a>
+  </div>
+</div>
+<div class="cartao">
+  {% if transferencias %}
+  <div class="tabela-rolagem"><table>
+    <tr><th>Solicitada</th><th>Paciente</th><th>Risco</th><th>Motivo</th><th>Solicitante</th><th>Situação</th><th></th></tr>
+    {% for t in transferencias %}
+    <tr>
+      <td>{{ t.solicitada_em|data }}</td>
+      <td><b>{{ t.nome }}</b><br><small>CPF {{ t.cpf|cpf }} · SUS {{ t.cns|cns }}</small></td>
+      <td>{{ risco(t.risco) }}</td>
+      <td>{{ MOTIVOS_TRANSFERENCIA[t.motivo] }}{% if t.especialidade %}<br><small>{{ t.especialidade }}</small>{% endif %}</td>
+      <td>{{ t.solicitante_nome }}</td>
+      <td><span class="etiqueta {{ 'ok' if t.status == 'concluida' else '' if t.status == 'cancelada' else 'alerta' }}">{{ STATUS_TRANSFERENCIA[t.status] }}</span></td>
+      <td><a class="botao pequeno" href="{{ url_for('transferencia.detalhe', transferencia_id=t.id) }}">Abrir</a></td>
+    </tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="vazio">Nenhuma transferência {{ 'em andamento' if filtro == 'ativas' }}.</p>{% endif %}
+</div>
+{% endblock %}

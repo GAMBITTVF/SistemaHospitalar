@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block titulo %}Auditoria{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Auditoria</h1><small>Registro de todas as ações feitas no sistema (últimos 500 eventos do filtro).</small></div>
+</div>
+<form class="cartao acoes" method="get">
+  <div><label>Usuário</label>
+    <select name="usuario"><option value="">Todos</option>
+      {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if usuario_id == u.id }}>{{ u.nome }} ({{ PAPEIS[u.papel] }})</option>{% endfor %}
+    </select></div>
+  <div><label>Data</label><input type="date" name="data" value="{{ data }}"></div>
+  <button class="botao" style="align-self:flex-end">Filtrar</button>
+</form>
+<div class="cartao">
+  <div class="tabela-rolagem"><table>
+    <tr><th>Data/hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>IP</th></tr>
+    {% for r in registros %}
+    <tr><td>{{ r.criado_em|data }}</td><td>{{ r.nome or 'SISTEMA' }}{% if r.papel %}<br><small>{{ PAPEIS[r.papel] }}</small>{% endif %}</td>
+      <td><code>{{ r.acao }}</code></td><td>{{ r.detalhe or '' }}</td><td><small>{{ r.ip or '' }}</small></td></tr>
+    {% else %}<tr><td colspan="5" class="vazio">Nenhum registro.</td></tr>{% endfor %}
+  </table></div>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/estilo.css') }}">
+</head>
+<body style="padding:20px 12px">
+<div class="barra-impressao">
+  <button class="botao" onclick="window.print()">Imprimir / salvar PDF</button>
+  <button class="botao secundario" onclick="window.close()">Fechar</button>
+</div>
+<div class="documento">
+  <div class="doc-cabecalho">
+    <div><h1>{% block cabecalho %}{% endblock %}</h1><small>Sistema Hospitalar</small></div>
+    <div style="text-align:right;font-size:.82rem">Prontuário {{ paciente.id }} · Atendimento {{ at.id }}<br>Emitido em {{ agora()|data }} por {{ usuario.nome }}</div>
+  </div>
+  <div class="bloco">
+    <h3>Identificação do paciente</h3>
+    <div class="linha">
+      <div class="largo"><b>Nome:</b> {{ paciente.nome }}</div>
+      <div><b>Nascimento:</b> {{ paciente.data_nascimento|dia }} ({{ idade(paciente.data_nascimento) }} anos)</div>
+      <div><b>Sexo:</b> {{ SEXOS[paciente.sexo] }}</div>
+      <div><b>CPF:</b> {{ paciente.cpf|cpf }}</div>
+      <div><b>Cartão SUS:</b> {{ paciente.cns|cns }}</div>
+      <div class="largo"><b>Mãe:</b> {{ paciente.nome_mae }}</div>
+      <div class="total"><b>Endereço:</b> {{ paciente.logradouro }}, {{ paciente.numero }}{% if paciente.complemento %} - {{ paciente.complemento }}{% endif %},
+        {{ paciente.bairro }}, {{ paciente.cidade }}/{{ paciente.uf }} - CEP {{ paciente.cep|cep }} · Tel. {{ paciente.telefone|telefone }}</div>
+      {% if paciente.alergias %}<div class="total" style="color:var(--erro)"><b>ALERGIAS:</b> {{ paciente.alergias }}</div>{% endif %}
+    </div>
+  </div>
+  {% block corpo %}{% endblock %}
+</div>
+</body>
+</html>

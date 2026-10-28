@@ -1,0 +1,36 @@
+{% extends 'documentos/_base_documento.html' %}
+{% block titulo %}Ficha de transferência - {{ paciente.nome }}{% endblock %}
+{% block cabecalho %}Ficha de Transferência de Paciente{% endblock %}
+{% block corpo %}
+<div class="bloco">
+  <h3>Solicitação</h3>
+  <div class="linha">
+    <div class="largo"><b>Motivo:</b> {{ MOTIVOS_TRANSFERENCIA[t.motivo] }}</div>
+    <div class="largo"><b>Recurso necessário:</b> {{ t.especialidade or '—' }}</div>
+    <div class="total"><b>Justificativa clínica:</b> {{ t.justificativa }}</div>
+    <div class="largo"><b>Médico solicitante:</b> {{ transferencias|selectattr('id', 'equalto', t.id)|map(attribute='solicitante_nome')|first }}</div>
+    <div class="largo"><b>Solicitada em:</b> {{ t.solicitada_em|data }}</div>
+    <div class="largo"><b>Destino:</b> {{ t.hospital_destino or '—' }}</div>
+    <div class="largo"><b>Protocolo regulação:</b> {{ t.protocolo_regulacao or '—' }}</div>
+  </div>
+</div>
+<div class="bloco">
+  <h3>Quadro clínico</h3>
+  <div class="linha">
+    <div><b>Entrada:</b> {{ at.entrada|data }}</div>
+    <div><b>Risco:</b> {{ RISCOS[at.risco].nome if at.risco else '—' }}</div>
+    <div class="largo"><b>Diagnóstico:</b> {{ at.hipotese_diagnostica or '—' }}{% if at.cid_principal %} (CID {{ at.cid_principal }}){% endif %}</div>
+    <div class="total"><b>Motivo da procura:</b> {{ at.motivo_procura }}</div>
+  </div>
+  {% set ultima_medica = evolucoes.medica|rejectattr('anulada_em')|first %}
+  {% if ultima_medica %}<p><b>Última evolução médica ({{ ultima_medica.criado_em|data }}):</b> {{ ultima_medica.texto }}</p>{% endif %}
+  {% set ultima_enf = evolucoes.enfermagem|rejectattr('anulada_em')|first %}
+  {% if ultima_enf %}<p><b>Última evolução de enfermagem ({{ ultima_enf.criado_em|data }}):</b> {{ ultima_enf.texto }}</p>{% endif %}
+</div>
+<div class="bloco">
+  <h3>Medicações em uso</h3>
+  {% set ativas = prescricoes|selectattr('status', 'equalto', 'ativa')|list %}
+  {% if ativas %}<ul style="margin:0">{% for p in ativas %}<li>{{ p.medicamento }} — {{ p.dose }} · {{ p.via }} · {{ p.frequencia }} ({{ p.total_administrado }} dose(s) dada(s))</li>{% endfor %}</ul>
+  {% else %}<p class="vazio">Nenhuma medicação ativa.</p>{% endif %}
+</div>
+{% endblock %}

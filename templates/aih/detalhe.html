@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco with context %}
+{% block titulo %}AIH - {{ paciente.nome }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Conferência de AIH — {{ paciente.nome }}</h1>
+    <small>Atendimento nº {{ at.id }} · <span class="etiqueta">{{ STATUS_AIH[registro.status] }}</span></small></div>
+  <div class="acoes">
+    <a class="botao secundario" href="{{ url_for('clinico.imprimir_capa', internacao_id=internacao.id) }}" target="_blank">Capa de internação</a>
+    <a class="botao secundario" href="{{ url_for('clinico.relatorio', atendimento_id=at.id) }}" target="_blank">Relatório completo</a>
+    <a class="botao secundario" href="{{ url_for('clinico.atendimento', atendimento_id=at.id) }}">Prontuário</a>
+  </div>
+</div>
+
+<div class="grade grade-2">
+  <div class="cartao destaque">
+    <h2>O que aconteceu com o paciente</h2>
+    <div class="dado"><b>Paciente</b>{{ paciente.nome }} · {{ idade(paciente.data_nascimento) }} anos · {{ SEXOS[paciente.sexo] }}</div>
+    <div class="dado"><b>CPF / Cartão SUS</b>{{ paciente.cpf|cpf }} · {{ paciente.cns|cns }}</div>
+    <div class="dado"><b>Período</b>{{ at.entrada|data }} até {{ at.saida|data }} ({{ horas_desde(at.entrada, at.saida) }}h)</div>
+    <div class="dado"><b>Saída</b>{{ TIPOS_SAIDA[at.tipo_saida] }}</div>
+    <div class="dado"><b>Risco na chegada</b>{{ risco(at.risco) }}</div>
+    <div class="dado"><b>Como chegou</b>{{ internacao.descricao_chegada or '—' }}</div>
+    <div class="dado"><b>Diagnóstico</b>{{ internacao.diagnostico or '—' }}</div>
+    <div class="dado"><b>CID principal / secundário</b>{{ internacao.cid_principal or '—' }} / {{ internacao.cid_secundario or '—' }}</div>
+    <div class="dado"><b>Capa assinada</b>{% if internacao.assinada_em %}{{ internacao.medico_nome }} ({{ internacao.medico_registro }}) em {{ internacao.assinada_em|data }}{% else %}<span class="etiqueta critico">NÃO ASSINADA</span>{% endif %}</div>
+    <div class="dado"><b>Resumo da saída</b>{{ at.resumo_alta or '—' }}</div>
+    {% if transferencias %}<div class="dado"><b>Transferência</b>{% for t in transferencias %}{{ STATUS_TRANSFERENCIA[t.status] }}{% if t.hospital_destino %} → {{ t.hospital_destino }}{% endif %}{{ '; ' if not loop.last }}{% endfor %}</div>{% endif %}
+  </div>
+
+  <div class="cartao">
+    <h2>Medicações e registros</h2>
+    <div class="dado"><b>Doses administradas</b>{{ administracoes|length }}</div>
+    {% if prescricoes %}
+    <table>
+      <tr><th>Medicamento</th><th>Via</th><th>Doses</th></tr>
+      {% for p in prescricoes %}<tr><td>{{ p.medicamento }} {{ p.dose }}</td><td>{{ p.via }}</td><td>{{ p.total_administrado }}</td></tr>{% endfor %}
+    </table>
+    {% endif %}
+    <div class="dado" style="margin-top:10px"><b>Evoluções</b>
+      Técnico: {{ evolucoes.tecnico|length }} · Enfermagem: {{ evolucoes.enfermagem|length }} · Médica: {{ evolucoes.medica|length }}</div>
+  </div>
+</div>
+
+<div class="cartao" id="decisao">
+  <h2>Autorização</h2>
+  {% if registro.revisado_em %}
+    <p>Última análise: {{ registro.revisado_em|data }}{% if registro.observacao %} — <i>{{ registro.observacao }}</i>{% endif %}</p>
+  {% endif %}
+  {% if registro.numero_aih %}
+    <p><b>Nº AIH:</b> {{ registro.numero_aih }} · <b>Procedimento SIGTAP:</b> {{ registro.procedimento_sigtap }} · <b>Sistema:</b> {{ registro.sistema_destino }}
+      {% if registro.exportado_em %} · exportada em {{ registro.exportado_em|data }}{% endif %}</p>
+  {% endif %}
+  {% if pode_editar('aih') and registro.status in ('pendente', 'pendencia') %}
+  <form method="post" action="{{ url_for('aih.decidir', aih_id=registro.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campos">
+      <div class="c4"><label>Número da AIH (13 dígitos)</label><input name="numero_aih" maxlength="15" inputmode="numeric" value="{{ registro.numero_aih or '' }}"></div>
+      <div class="c4"><label>Procedimento principal SIGTAP (10 dígitos)</label><input name="procedimento_sigtap" maxlength="12" inputmode="numeric" value="{{ registro.procedimento_sigtap or '' }}" placeholder="Ex.: 0303140151"></div>
+      <div class="c4"><label>Enviar para</label><select name="sistema_destino"><option value=""></option>{% for s in sistemas %}<option {{ 'selected' if registro.sistema_destino == s }}>{{ s }}</option>{% endfor %}</select></div>
+      <div class="c12"><label>Observação / pendência</label><textarea name="observacao" maxlength="2000">{{ registro.observacao or '' }}</textarea></div>
+    </div>
+    <div class="acoes" style="margin-top:10px">
+      <button class="botao" name="acao" value="autorizar">Autorizar envio</button>
+      <button class="botao perigo" name="acao" value="pendencia" formnovalidate>Registrar pendência</button>
+    </div>
+  </form>
+  {% elif not pode_editar('aih') %}<div class="somente-leitura">🔒 Somente leitura para o seu cargo</div>{% endif %}
+</div>
+{% endblock %}

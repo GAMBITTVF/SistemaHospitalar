@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block titulo %}Alterar senha{% endblock %}
+{% block conteudo %}
+<div class="cabecalho"><div><h1>Alterar senha</h1>
+  {% if usuario.trocar_senha %}<small>Por segurança, defina uma nova senha pessoal antes de continuar.</small>{% endif %}
+</div></div>
+<form method="post" class="cartao" style="max-width:480px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div style="margin-bottom:12px"><label>Senha atual</label><input type="password" name="senha_atual" required></div>
+  <div style="margin-bottom:12px"><label>Nova senha</label><input type="password" name="nova_senha" required minlength="8">
+    <small>Mínimo de 8 caracteres, com letras e números.</small></div>
+  <div style="margin-bottom:16px"><label>Confirme a nova senha</label><input type="password" name="confirmacao" required minlength="8"></div>
+  <button class="botao">Salvar nova senha</button>
+</form>
+{% endblock %}

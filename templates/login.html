@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block titulo %}Entrar{% endblock %}
+{% block publico %}
+<div class="login-pagina">
+  <form class="login-caixa" method="post" autocomplete="off">
+    <div class="login-logo">
+      <div class="cruz">+</div>
+      <div>
+        <h1>Sistema Hospitalar</h1>
+        <small>Acesso restrito aos profissionais</small>
+      </div>
+    </div>
+    {% include '_mensagens.html' %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div style="margin-bottom:14px">
+      <label for="username">Usuário</label>
+      <input id="username" name="username" value="{{ username or '' }}" required autofocus autocapitalize="none">
+    </div>
+    <div style="margin-bottom:20px">
+      <label for="senha">Senha</label>
+      <input id="senha" name="senha" type="password" required>
+    </div>
+    <button class="botao" type="submit">Entrar</button>
+    <div class="login-rodape">Todos os acessos são registrados para auditoria.<br>Em caso de problemas, procure o administrador do sistema.</div>
+  </form>
+</div>
+{% endblock %}

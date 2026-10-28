@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import risco with context %}
+{% block titulo %}Transferência - {{ paciente.nome }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho">
+  <div><h1>Transferência — {{ paciente.nome }}</h1><small>Atendimento nº {{ at.id }} · solicitada em {{ t.solicitada_em|data }}</small></div>
+  <div class="acoes">
+    <a class="botao secundario" href="{{ url_for('transferencia.ficha', transferencia_id=t.id) }}" target="_blank">Imprimir ficha</a>
+    {% if pode_ver('atendimento') %}<a class="botao secundario" href="{{ url_for('clinico.atendimento', atendimento_id=at.id) }}">Prontuário completo</a>{% endif %}
+    <a class="botao secundario" href="{{ url_for('transferencia.lista') }}">Voltar</a>
+  </div>
+</div>
+
+<div class="grade grade-2">
+  <div class="cartao destaque">
+    <h2>Dados completos para cadastro</h2>
+    <div class="grade grade-2" style="gap:4px 16px">
+      <div class="dado"><b>Nome</b>{{ paciente.nome }}</div>
+      {% if paciente.nome_social %}<div class="dado"><b>Nome social</b>{{ paciente.nome_social }}</div>{% endif %}
+      <div class="dado"><b>Nascimento</b>{{ paciente.data_nascimento|dia }} ({{ idade(paciente.data_nascimento) }} anos)</div>
+      <div class="dado"><b>Sexo</b>{{ SEXOS[paciente.sexo] }}</div>
+      <div class="dado"><b>CPF</b>{{ paciente.cpf|cpf }}</div>
+      <div class="dado"><b>Cartão SUS</b>{{ paciente.cns|cns }}</div>
+      <div class="dado"><b>Mãe</b>{{ paciente.nome_mae }}</div>
+      <div class="dado"><b>Telefone</b>{{ paciente.telefone|telefone }}</div>
+      <div class="dado" style="grid-column:1/-1"><b>Endereço</b>{{ paciente.logradouro }}, {{ paciente.numero }}{% if paciente.complemento %} - {{ paciente.complemento }}{% endif %}, {{ paciente.bairro }}, {{ paciente.cidade }}/{{ paciente.uf }} — CEP {{ paciente.cep|cep }}</div>
+      {% if at.acompanhante %}<div class="dado"><b>Acompanhante</b>{{ at.acompanhante }}</div>{% endif %}
+    </div>
+    {% if paciente.alergias %}<div class="alergia">⚠ Alergias: {{ paciente.alergias }}</div>{% endif %}
+  </div>
+  <div class="cartao">
+    <h2>Quadro clínico</h2>
+    <p>{{ risco(at.risco) }}</p>
+    <div class="dado"><b>Motivo</b>{{ MOTIVOS_TRANSFERENCIA[t.motivo] }}{% if t.especialidade %} — {{ t.especialidade }}{% endif %}</div>
+    <div class="dado"><b>Justificativa do médico</b>{{ t.justificativa }}</div>
+    <div class="dado"><b>Diagnóstico</b>{{ at.hipotese_diagnostica or '—' }}{% if at.cid_principal %} (CID {{ at.cid_principal }}){% endif %}</div>
+    <div class="dado"><b>Internado</b>{{ 'Sim — ' ~ STATUS_INTERNACAO[internacao.status] if internacao else 'Não' }}</div>
+    {% set ativas = prescricoes|selectattr('status', 'equalto', 'ativa')|list %}
+    <div class="dado"><b>Medicações ativas</b>{% for p in ativas %}{{ p.medicamento }} {{ p.dose }} ({{ p.via }}, {{ p.frequencia }}){{ '; ' if not loop.last }}{% else %}Nenhuma{% endfor %}</div>
+  </div>
+</div>
+
+<div class="cartao">
+  <h2>Andamento da transferência</h2>
+  <p>Situação atual: <span class="etiqueta alerta">{{ STATUS_TRANSFERENCIA[t.status] }}</span>
+    {% if t.atualizado_em %}<small> · última atualização {{ t.atualizado_em|data }}</small>{% endif %}</p>
+  {% if pode_editar('central_transferencia') and fluxo %}
+  <form method="post" action="{{ url_for('transferencia.atualizar', transferencia_id=t.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="campos">
+      <div class="c4"><label>Novo status</label>
+        <select name="status">
+          <option value="{{ t.status }}">{{ STATUS_TRANSFERENCIA[t.status] }} (manter)</option>
+          {% for s in STATUS_TRANSFERENCIA if s in fluxo %}<option value="{{ s }}">{{ STATUS_TRANSFERENCIA[s] }}</option>{% endfor %}
+        </select></div>
+      <div class="c8"><label>Hospital de destino</label><input name="hospital_destino" value="{{ t.hospital_destino or '' }}" maxlength="200"></div>
+      <div class="c6"><label>Contato no destino (nome / telefone)</label><input name="contato_destino" value="{{ t.contato_destino or '' }}" maxlength="200"></div>
+      <div class="c6"><label>Protocolo da regulação (ex.: SISREG / CROSS)</label><input name="protocolo_regulacao" value="{{ t.protocolo_regulacao or '' }}" maxlength="60"></div>
+      <div class="c12"><label>Observações</label><textarea name="observacoes" maxlength="2000">{{ t.observacoes or '' }}</textarea></div>
+    </div>
+    <button class="botao" style="margin-top:10px">Salvar andamento</button>
+    <small> · Ao marcar "Concluída", o atendimento é encerrado como transferência.</small>
+  </form>
+  {% else %}
+    <div class="dado"><b>Destino</b>{{ t.hospital_destino or '—' }}</div>
+    <div class="dado"><b>Contato</b>{{ t.contato_destino or '—' }}</div>
+    <div class="dado"><b>Protocolo</b>{{ t.protocolo_regulacao or '—' }}</div>
+    <div class="dado"><b>Observações</b>{{ t.observacoes or '—' }}</div>
+  {% endif %}
+</div>
+{% endblock %}

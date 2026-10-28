@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% from '_macros.html' import campo with context %}
+{% block titulo %}{{ 'Editar usuário' if existente else 'Novo usuário' }}{% endblock %}
+{% block conteudo %}
+<div class="cabecalho"><div><h1>{{ 'Editar usuário' if existente else 'Novo usuário' }}</h1></div></div>
+<form method="post" class="cartao" style="max-width:760px" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="campos">
+    {{ campo('nome', 'Nome completo', dados, erros, classe='c8') }}
+    {{ campo('username', 'Login', dados, erros, classe='c4', extra='autocapitalize=none') }}
+    <div class="c6 {{ 'campo-erro' if erros.get('papel') }}">
+      <label>Cargo / permissão <span class="obrig">*</span></label>
+      <select name="papel" required>
+        <option value=""></option>
+        {% for k, v in PAPEIS.items() %}<option value="{{ k }}" {{ 'selected' if dados.get('papel') == k }}>{{ v }}</option>{% endfor %}
+      </select>
+      {% if erros.get('papel') %}<div class="msg-erro">{{ erros.papel }}</div>{% endif %}
+    </div>
+    {{ campo('registro_conselho', 'Registro no conselho (CRM/COREN + UF)', dados, erros, obrig=false, classe='c6', extra='placeholder="Ex.: CRM-SP 123456"') }}
+    {% if not existente %}
+      {{ campo('senha', 'Senha inicial', {}, erros, tipo='password', classe='c6') }}
+      <div class="c6" style="align-self:end"><small>O usuário será obrigado a trocar a senha no primeiro acesso.</small></div>
+    {% endif %}
+  </div>
+  <hr>
+  <div class="acoes">
+    <button class="botao">Salvar</button>
+    <a class="botao secundario" href="{{ url_for('admin.usuarios') }}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}
