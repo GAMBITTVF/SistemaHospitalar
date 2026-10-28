@@ -103,3 +103,10 @@ Sempre use **HTTPS** e faça **backup diário** do arquivo `instance/hospital.db
   é preciso adaptar para o leiaute oficial do DATASUS da competência vigente (a função está em `rotas/aih.py`).
 - O CID-10 é validado quanto ao formato (ex.: `J18.9`), não contra a tabela oficial.
 - Dados de saúde são dados sensíveis pela LGPD: restrinja o acesso, use HTTPS e mantenha backups protegidos.
+- <img width="1909" height="912" alt="image" src="https://github.com/user-attachments/assets/60931ec1-9113-4b3c-a2d5-fdef27623514" />
+
+- <img width="1891" height="901" alt="image" src="https://github.com/user-attachments/assets/3dfce19b-2571-4428-965b-f6d364735190" />
+
+<img width="1915" height="922" alt="image" src="https://github.com/user-attachments/assets/3314a441-c8db-4d01-83d3-0da5a154970a" />
+
+
